@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>three.js GLTFLoader 测试</title>
+<style>
+  body { margin: 0; overflow: hidden; }
+  #screenshotBtn { position: fixed; top: 10px; left: 10px; z-index: 10; }
+</style>
+</head>
+<body>
+
+<button id="screenshotBtn">开始截图</button>
+
+<script type="module">
+import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.154.0/build/three.module.js';
+import { GLTFLoader } from 'https://cdn.jsdelivr.net/npm/three@0.154.0/examples/jsm/loaders/GLTFLoader.js';
+
+
+let scene, camera, renderer, model;
+let angle = 0;
+const totalFrames = 60;  // 简化一点，截图60帧
+let currentFrame = 0;
+const screenshots = [];
+
+init();
+animate();
+
+function init() {
+  scene = new THREE.Scene();
+  camera = new THREE.PerspectiveCamera(45, window.innerWidth/window.innerHeight, 0.1, 1000);
+  camera.position.set(0, 2, 5);
+
+  renderer = new THREE.WebGLRenderer({antialias:true, preserveDrawingBuffer:true});
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  document.body.appendChild(renderer.domElement);
+
+  const loader = new GLTFLoader();
+  loader.load(
+    'https://threejs.org/examples/models/gltf/DamagedHelmet/glTF/DamagedHelmet.gltf',
+    function(gltf) {
+      model = gltf.scene;
+      scene.add(model);
+      console.log('模型加载成功！');
+    },
+    undefined,
+    function(error) {
+      console.error('模型加载出错:', error);
+    }
+  );
+
+  const light = new THREE.HemisphereLight(0xffffff, 0x444444);
+  light.position.set(0, 20, 0);
+  scene.add(light);
+
+  const dirLight = new THREE.DirectionalLight(0xffffff);
+  dirLight.position.set(3, 10, 10);
+  scene.add(dirLight);
+
+  window.addEventListener('resize', () => {
+    camera.aspect = window.innerWidth/window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+  });
+
+  document.getElementById('screenshotBtn').addEventListener('click', startScreenshot);
+}
+
+function animate() {
+  requestAnimationFrame(animate);
+  if(model){
+    model.rotation.y = angle;
+  }
+  renderer.render(scene, camera);
+}
+
+function startScreenshot() {
+  console.log('开始截图函数被调用');
+  if(!model) {
+    alert('模型还未加载完成，请稍等！');
+    return;
+  }
+  currentFrame = 0;
+  screenshots.length = 0;
+  takeScreenshot();
+}
+
+function takeScreenshot() {
+  if(currentFrame >= totalFrames) {
+    downloadAll();
+    return;
+  }
+  angle = (currentFrame / totalFrames) * Math.PI * 2;
+  renderer.render(scene, camera);
+
+  const imgData = renderer.domElement.toDataURL('image/png');
+  screenshots.push(imgData);
+
+  console.log(`已截图第${currentFrame+1}帧`);
+  currentFrame++;
+
+  setTimeout(takeScreenshot, 100);
+}
+
+function downloadAll() {
+  screenshots.forEach((imgData, index) => {
+    const a = document.createElement('a');
+    a.href = imgData;
+    a.download = `frame_${index + 1}.png`;
+    a.click();
+  });
+  alert('截图完成，已开始下载所有帧！');
+}
+</script>
+
+</body>
+</html>
